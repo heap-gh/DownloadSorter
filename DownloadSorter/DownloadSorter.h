@@ -41,6 +41,6 @@ private:
 	bool getDownloadFolder();
 	bool getUserName();
 	bool handleError(int statusCode);
-	bool loadDefaultSettings();
+	bool loadSettings(bool defaultSettings);
 
 };

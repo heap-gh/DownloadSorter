@@ -9,24 +9,41 @@ DownloadSorter::DownloadSorter()
     this->exit = false;
     this->changes = false;
 
+    // get the download folder path
     if (!getDownloadFolder())
         this->exit = true;
 
+    // get the windows username
     if (!getUserName())
         this->exit = true;
 
+    // check instrallation folder and settings/config file
     if (!locateInstallationFolderAndFiles())
         this->exit = true;
 
     // load settings from json
 
+    
+
     // ready to start
 
     if (!this->exit)
     {
-        loadConfig();
-    }
+        if (loadSettings(false) &&
+            loadConfig())
+        {
 
+        }
+        else
+        {
+            this->exit = true;
+        }
+    }
+    else
+    {
+        
+    }
+   
 
     
 
@@ -37,12 +54,19 @@ DownloadSorter::DownloadSorter()
 }
 
 
+/*
+    A function that can handle some non-critical errors from StatusCode.h
+*/
 
 bool DownloadSorter::handleError(int statusCode)
 {
 
     switch (statusCode)
     {
+
+    /*
+        delete old path and create a new directory
+    */
 
     case D_BASEDIR_NOT_DIRECTORY:
     {
@@ -73,6 +97,10 @@ bool DownloadSorter::handleError(int statusCode)
 
     } break;
 
+    /*
+        Create a new directory
+    */
+
     case D_BASEDIR_NOT_FOUND:
     {
 
@@ -86,14 +114,19 @@ bool DownloadSorter::handleError(int statusCode)
 
     } break;
 
+    /*
+        Create a new config file
+    */
+
     case D_CONFIGFILE_NOT_FOUND:
     {
-        // create directory
+        
 
         HANDLE hFile = CreateFile(this->applicationConfigFilePath.c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
         if (hFile == INVALID_HANDLE_VALUE)
         {
             std::cout << "Failed to create file. Error code: " << GetLastError() << std::endl;
+            this->exit = true;
             return false;
         }
 
@@ -103,6 +136,10 @@ bool DownloadSorter::handleError(int statusCode)
 
     } break;
 
+    /*
+        Create a new settings file
+    */
+
     case D_SETTINGS_FILE_NOT_FOUND:
     {
 
@@ -110,10 +147,13 @@ bool DownloadSorter::handleError(int statusCode)
         if (hFile == INVALID_HANDLE_VALUE)
         {
             std::cout << "Failed to create file. Error code: " << GetLastError() << std::endl;
+            this->exit = true;
             return false;
         }
 
-        loadDefaultSettings();
+        CloseHandle(hFile);
+
+        return true;
 
     } break;
 
@@ -131,11 +171,74 @@ bool DownloadSorter::handleError(int statusCode)
 }
 
 
-bool DownloadSorter::loadDefaultSettings()
+/*
+    Loads settings from "applicationSettingsFilePath"
+
+    defaultSettings == true:
+        The default settings from settings object are kept and the settings.json file is filled with these
+
+    defaultSettings == false:
+        The settings from the settings.json file are read and saved to this->settings
+*/
+
+bool DownloadSorter::loadSettings(bool defaultSettings)
 {
 
-    // implement
+    if (defaultSettings)
+    {
+        json data;
+        // write the default data from settings struct to json file
+        data["loadDefaultConfig"] = true;
 
+        std::ofstream configFile(this->applicationSettingsFilePath.c_str());
+        if (!configFile.is_open())
+        {
+            std::wcout << "Failed to open file for writing." << std::endl;
+            DWORD error = GetLastError();
+            std::wcout << "Error code: " << error << std::endl;
+            LPWSTR errorMessageBuffer = nullptr;
+            FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                NULL, error, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPWSTR)&errorMessageBuffer, 0, NULL);
+            if (errorMessageBuffer)
+            {
+                std::wcout << "Error message: " << errorMessageBuffer << std::endl;
+                LocalFree(errorMessageBuffer);
+            }
+            this->exit = true;
+            return false;
+        }
+
+        // Write JSON data to the file
+        configFile << std::setw(4) << data << std::endl;
+
+        // Close the file stream
+        configFile.close();
+        
+    }
+    else
+    {
+        std::ifstream file(this->applicationSettingsFilePath);
+
+        // Check if the file is opened successfully
+        if (!file.is_open())
+        {
+            std::cout << "Failed to open file." << std::endl;
+            return false;
+        }
+
+        // Read the content of the file into a JSON object
+        json data;
+        file >> data;
+
+        file.close();
+
+        // Write the data to the settings
+        this->settings.loadDefaultConfig = data["loadDefaultConfig"];
+            
+        std::cout << this->settings.loadDefaultConfig << "\n";
+    }
+
+    return true;
 
 }
 
@@ -182,7 +285,7 @@ bool DownloadSorter::locateInstallationFolderAndFiles()
         return false;
     }
     
-    std::wcout << std::wstring(userDir) << "\n";
+    // std::wcout << std::wstring(userDir) << "\n";
 
     // check if directory exists
 
@@ -225,6 +328,9 @@ bool DownloadSorter::locateInstallationFolderAndFiles()
             this->exit = true;
             return false;
         }
+
+        // load default settings
+        loadSettings(true);
 
     }
 
@@ -278,7 +384,7 @@ bool DownloadSorter::loadConfig()
             std::wcout << "Error code: " << error << std::endl;
             LPWSTR errorMessageBuffer = nullptr;
             FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-                NULL, error, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPWSTR)&errorMessageBuffer, 0, NULL);
+                            NULL, error, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPWSTR)&errorMessageBuffer, 0, NULL);
             if (errorMessageBuffer)
             {
                 std::wcout << "Error message: " << errorMessageBuffer << std::endl;
@@ -298,7 +404,7 @@ bool DownloadSorter::loadConfig()
     else
     {
         
-
+        // just load the config 
 
     }
 
