@@ -1,7 +1,7 @@
 
 #include "DownloadSorter.h"
 
-using json = nlohmann::json;
+namespace fs = boost::filesystem;
 
 DownloadSorter::DownloadSorter()
 {
@@ -25,14 +25,15 @@ DownloadSorter::DownloadSorter()
 
     
 
-    // ready to start
+    // check if ready to start
 
     if (!this->exit)
     {
         if (loadSettings(false) &&
             loadConfig())
         {
-
+            this->initialized = true;
+            checkChanges();
         }
         else
         {
@@ -43,13 +44,6 @@ DownloadSorter::DownloadSorter()
     {
         
     }
-   
-
-    
-
-    for (int x = 0; x < this->errors.size(); x++)
-        std::cout << this->errors.at(x);
-    
 
 }
 
@@ -190,6 +184,8 @@ bool DownloadSorter::loadSettings(bool defaultSettings)
         // write the default data from settings struct to json file
         data["loadDefaultConfig"] = true;
 
+        this->configJSON = data;
+
         std::ofstream configFile(this->applicationSettingsFilePath.c_str());
         if (!configFile.is_open())
         {
@@ -235,6 +231,8 @@ bool DownloadSorter::loadSettings(bool defaultSettings)
         // Write the data to the settings
         this->settings.loadDefaultConfig = data["loadDefaultConfig"];
             
+        this->settingsJSON = data;
+
         std::cout << this->settings.loadDefaultConfig << "\n";
     }
 
@@ -400,12 +398,33 @@ bool DownloadSorter::loadConfig()
         // Close the file stream
         configFile.close();
 
+        
+        this->configJSON = data;
+
     }
     else
     {
         
         // just load the config 
+        std::ifstream file(this->applicationSettingsFilePath);
 
+        // Check if the file is opened successfully
+        if (!file.is_open())
+        {
+            std::cout << "Failed to open file." << std::endl;
+            return false;
+        }
+
+        // Read the content of the file into a JSON object
+        json data;
+        file >> data;
+
+        file.close();
+
+
+        this->configJSON = data;
+
+        std::cout << this->settings.loadDefaultConfig << "\n";
     }
 
 
@@ -418,8 +437,42 @@ bool DownloadSorter::loadConfig()
 bool DownloadSorter::checkChanges()
 {
 
+    try
+    {
+        for (fs::directory_entry& entry : fs::directory_iterator(this->downloadFolderPath))
+        {
+            if (fs::is_regular_file(entry))
+            {
+                //std::cout << "File: " << entry.path().extension().string() << std::endl;
+                try
+                {
+                    std::string path = getRulePath(entry.path().extension().string());
+                    
+                    // move file to path
+
+                }   
+                catch (nlohmann::json_abi_v3_11_3::detail::type_error)
+                {
+                    std::cout << "XD\n";
+                }
+            }
+        }
+    }
+    catch (boost::filesystem::filesystem_error& ex)
+    { 
+        std::cout << ex.what() << "\n";
+    }
+
 
     return true;
+}
+
+/*
+    Returns the destination folder for a certain file extension
+*/
+std::string DownloadSorter::getRulePath(std::string extension)
+{
+    return this->configJSON[extension];
 }
 
 
@@ -427,26 +480,38 @@ bool DownloadSorter::getDownloadFolder()
 {
 
 
-    // Buffer to hold the path
-    TCHAR path[MAX_PATH];
+    const wchar_t* userProfile = _wgetenv(L"USERPROFILE");
 
-    // Get the Download folder path
-    if (SHGetFolderPath(NULL, CSIDL_PERSONAL, NULL, 0, path) != S_OK)
+    if (userProfile != nullptr)
     {
-        std::cout << "Error: Unable to get Download folder path." << std::endl;
-        this->errors.push_back("Unable to get Download folder path!");
-        this->errorCodes.push_back(D_DOWNLOADPATH_NOT_FOUND);
-        return false;
+        this->downloadFolderPath = std::wstring(userProfile) + L"\\Downloads";
+        std::wcout << L"Downloads folder path: " << downloadFolderPath << std::endl;
     }
+    else
+    {
+        std::wcout << L"Failed to retrieve user profile directory." << std::endl;
+        return false;
 
-    // Append 'Downloads' folder to the path
-    std::wstring downloadFolder = path;
-    downloadFolder += L"\\Downloads";
-
-    std::wcout << downloadFolder << "\n";
-
-    this->downloadFolderPath = downloadFolder;
+    }
+    
 
     return true;
+
+}
+
+
+
+void DownloadSorter::start()
+{
+
+    while (true)
+    {
+        
+        checkChanges();
+        
+        Sleep(2000);
+
+    }
+
 
 }

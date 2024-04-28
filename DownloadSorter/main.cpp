@@ -108,6 +108,21 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     DownloadSorter* obj = new DownloadSorter();
 
+    while (!obj->initialized)
+    {
+        Sleep(100);
+        // idle
+    }
+
+    if (obj->exit)
+    {
+        for (int x = 0; x < obj->errors.size(); x++)
+            std::cout << obj->errors.at(x);
+        return 0;
+    }
+
+    //std::thread running(&DownloadSorter::start, obj);
+
     // Main loop
     bool done = false;
     while (!done)
@@ -147,7 +162,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             ImGui::Begin("Kernel Injector", NULL, window_flags);
 
 
-            ImGui::Button("Gay");
+            ImGui::Button("Test");
             
 
 
@@ -178,6 +193,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     CleanupDeviceD3D();
     ::DestroyWindow(hwnd);
     ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
+
+    //running.join();
 
     return 0;
 }
