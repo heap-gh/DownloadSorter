@@ -25,7 +25,6 @@ class DownloadSorter
 public:
 	Settings					settings;
 	std::wstring				downloadFolderPath;
-	std::vector<std::string>	errors;
 	std::vector<unsigned int>   errorCodes;
 	std::wstring				windowsUsername;
 	std::wstring				applicationBasePath;
@@ -51,6 +50,8 @@ private:
 	bool				getUserName();
 	bool				handleError(int statusCode);
 	bool				loadSettings(bool defaultSettings);
+	bool				moveFile(const std::string& sourceFilePath, const std::string& destinationPath);
+	bool				addNewRule(std::string fileType, std::string destinationPath);
 	std::string			getRulePath(std::string extension);
 
 

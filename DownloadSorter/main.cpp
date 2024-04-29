@@ -116,17 +116,24 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     if (obj->exit)
     {
-        for (int x = 0; x < obj->errors.size(); x++)
-            std::cout << obj->errors.at(x);
+        for (int x = 0; x < obj->errorCodes.size(); x++)
+            std::cout << obj->errorCodes.at(x);
         return 0;
     }
 
-    //std::thread running(&DownloadSorter::start, obj);
+    std::thread running(&DownloadSorter::start, obj);
 
     // Main loop
     bool done = false;
     while (!done)
     {
+
+        if (obj->exit)
+        {
+            for (int x = 0; x < obj->errorCodes.size(); x++)
+                std::cout << obj->errorCodes.at(x);
+            return 0;
+        }
 
 
         MSG msg;
@@ -194,7 +201,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     ::DestroyWindow(hwnd);
     ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
 
-    //running.join();
+    running.join();
 
     return 0;
 }

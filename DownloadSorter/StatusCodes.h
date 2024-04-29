@@ -14,5 +14,7 @@
 #define D_DOWNLOADPATH_NOT_FOUND	0x6 // critical
 #define D_CONFIGFILE_NOT_FOUND      0x7 
 #define D_SETTINGS_FILE_NOT_FOUND	0x8
+#define D_MOVING_FAILED				0x9
+
 
 #endif // !STATUSCODES_H

@@ -249,7 +249,6 @@ bool DownloadSorter::getUserName()
 
     if (!GetUserName(username, &size))
     {
-        this->errors.push_back("Unable to get username");
         this->errorCodes.push_back(D_USERNAME);
         
         return false;
@@ -272,12 +271,11 @@ bool DownloadSorter::install()
 bool DownloadSorter::locateInstallationFolderAndFiles()
 {
 
-    // search user directory
+    // search the user directory
 
     wchar_t userDir[MAX_PATH];
     if (SHGetFolderPath(NULL, CSIDL_PROFILE, NULL, 0, userDir) != S_OK)
     {
-        this->errors.push_back("Failed to retrieve user directory");
         this->errorCodes.push_back(D_USERDIR_NOT_LOCATED);
         this->exit = true;
         return false;
@@ -285,14 +283,12 @@ bool DownloadSorter::locateInstallationFolderAndFiles()
     
     // std::wcout << std::wstring(userDir) << "\n";
 
-    // check if directory exists
-
+    // check if basedirectory directory exists
     this->applicationBasePath = std::wstring(userDir) + L"\\DownloadSorter";
 
     DWORD ftyp = GetFileAttributesW(this->applicationBasePath.c_str());
     if (ftyp == INVALID_FILE_ATTRIBUTES)
     {
-        this->errors.push_back("Failed to locate application directory");
         this->errorCodes.push_back(D_BASEDIR_NOT_FOUND);
         if (!handleError(D_BASEDIR_NOT_FOUND))
         {
@@ -302,7 +298,6 @@ bool DownloadSorter::locateInstallationFolderAndFiles()
     }
     else if (!(ftyp & FILE_ATTRIBUTE_DIRECTORY))
     {
-        this->errors.push_back("Failed to located directory");
         this->errorCodes.push_back(D_BASEDIR_NOT_DIRECTORY);
         if (!handleError(D_BASEDIR_NOT_DIRECTORY))
         {
@@ -320,7 +315,6 @@ bool DownloadSorter::locateInstallationFolderAndFiles()
     if (INVALID_FILE_ATTRIBUTES == GetFileAttributesW(this->applicationSettingsFilePath.c_str()) && GetLastError() == ERROR_FILE_NOT_FOUND)
     {
         this->errorCodes.push_back(D_SETTINGS_FILE_NOT_FOUND);
-        this->errors.push_back("Could not find setttings file");
         if (!handleError(D_SETTINGS_FILE_NOT_FOUND))
         {
             this->exit = true;
@@ -340,7 +334,6 @@ bool DownloadSorter::locateInstallationFolderAndFiles()
     if (INVALID_FILE_ATTRIBUTES == GetFileAttributesW(this->applicationConfigFilePath.c_str()) && GetLastError() == ERROR_FILE_NOT_FOUND)
     {
         this->errorCodes.push_back(D_CONFIGFILE_NOT_FOUND);
-        this->errors.push_back("Could not find config file");
         if (!handleError(D_CONFIGFILE_NOT_FOUND))
         {
             this->exit = true;
@@ -443,17 +436,21 @@ bool DownloadSorter::checkChanges()
         {
             if (fs::is_regular_file(entry))
             {
-                //std::cout << "File: " << entry.path().extension().string() << std::endl;
+
                 try
                 {
-                    std::string path = getRulePath(entry.path().extension().string());
+                    std::string destinationPath = getRulePath(entry.path().extension().string());
                     
-                    // move file to path
+                    if (!moveFile(entry.path().string(), destinationPath))
+                    {
+                        this->errorCodes.push_back(D_MOVING_FAILED);
+                        
+                    }
 
                 }   
                 catch (nlohmann::json_abi_v3_11_3::detail::type_error)
                 {
-                    std::cout << "XD\n";
+                   
                 }
             }
         }
@@ -512,6 +509,41 @@ void DownloadSorter::start()
         Sleep(2000);
 
     }
+
+
+}
+
+
+
+bool DownloadSorter::moveFile(const std::string& sourceFilePath, const std::string& destinationPath)
+{
+    try
+    {
+        // Check if the source file exists
+        if (!fs::exists(sourceFilePath))
+        {
+            std::cout << "Source file does not exist." << std::endl;
+            return false;
+        }
+
+        // Move the file to the destination
+        fs::path destination(destinationPath);
+        fs::rename(sourceFilePath, destination / fs::path(sourceFilePath).filename());
+
+        std::cout << "File moved successfully." << std::endl;
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        std::cout << "Error: " << e.what() << std::endl;
+        return false;
+    }
+
+}
+
+
+bool DownloadSorter::addNewRule(std::string fileType, std::string destinationPath)
+{
 
 
 }
